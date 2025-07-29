@@ -4,6 +4,7 @@ import { parseStringPromise } from 'xml2js';
 
 await Actor.init();
 
+// Get input fields from the Actor input form
 const input = await Actor.getInput();
 const SUPABASE_KEY = input.supabaseKey;
 const SUPABASE_URL = input.supabaseUrl;
@@ -45,13 +46,16 @@ for (const item of items) {
     const tender = {
         title: item.title?.trim(),
         description: item.description?.trim(),
-        publication_date: new Date(item.pubDate).toISOString(),
+        organization: "Unknown", // fallback until we extract actual org
+        category: "other", // enum default
+        status: "open", // enum default
+        publication_date: new Date(item.pubDate).toISOString().split('T')[0], // format: YYYY-MM-DD
         deadline: null,
         region: null,
-        cpv_code: '31500000-1',
-        source: item.link,
-        download_status: false,
-        review_status: 'pending',
+        cpv_code: "31500000-1",
+        source_url: item.link,
+        download_status: "pending",
+        review_status: "pending"
     };
 
     try {
