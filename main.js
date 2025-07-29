@@ -2,67 +2,67 @@ import { Actor } from 'apify';
 import fetch from 'node-fetch';
 import { parseStringPromise } from 'xml2js';
 
-await Actor.init();
+try {
+    console.log('🔄 Initializing actor...');
+    await Actor.init();
 
-// Get input fields from the Actor input form
-const input = await Actor.getInput();
-const SUPABASE_KEY = input.supabaseKey;
-const SUPABASE_URL = input.supabaseUrl;
-const FEED_URL = input.feedUrl || 'https://contrataciondelestado.es/sindicacion/sindicacion_31500000_1.xml';
+    console.log('📥 Getting input...');
+    const input = await Actor.getInput();
+    const SUPABASE_KEY = input.supabaseKey;
+    const SUPABASE_URL = input.supabaseUrl;
+    const FEED_URL = input.feedUrl || 'https://contrataciondelestado.es/sindicacion/sindicacion_31500000_1.xml';
 
-async function fetchXML(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch XML: ${res.status}`);
+    console.log('🌐 Fetching XML...');
+    const res = await fetch(FEED_URL);
     const xmlText = await res.text();
-    return parseStringPromise(xmlText, { explicitArray: false });
-}
 
-async function pushToSupabase(tender) {
-    const res = await fetch(SUPABASE_URL, {
-        method: 'POST',
-        headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-        },
-        body: JSON.stringify([tender]),
-    });
+    console.log('🧠 Parsing XML...');
+    const parsed = await parseStringPromise(xmlText, { explicitArray: false });
+    const items = parsed.rss?.channel?.item || [];
 
-    if (!res.ok) {
-        const error = await res.text();
-        throw new Error(`Supabase insert failed for ${tender.title}: ${res.status} - ${error}`);
+    console.log(`📦 Found ${items.length} items`);
+
+    for (const item of items) {
+        const tender = {
+            title: item.title?.trim(),
+            description: item.description?.trim(),
+            organization: "Unknown",
+            category: "other",
+            status: "open",
+            publication_date: new Date(item.pubDate).toISOString().split('T')[0],
+            deadline: null,
+            region: null,
+            cpv_code: "31500000-1",
+            source_url: item.link,
+            download_status: "pending",
+            review_status: "pending"
+        };
+
+        console.log(`📤 Inserting tender: ${tender.title}`);
+
+        const res = await fetch(SUPABASE_URL, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify([tender]),
+        });
+
+        if (!res.ok) {
+            const error = await res.text();
+            throw new Error(`Supabase insert failed: ${res.status} - ${error}`);
+        }
+
+        const json = await res.json();
+        console.log(`✅ Inserted: ${tender.title}`);
     }
 
-    const json = await res.json();
-    console.log(`✅ Inserted: ${tender.title}`);
-    return json;
+    console.log('🏁 Done, exiting.');
+    await Actor.exit();
+} catch (err) {
+    console.error('🔥 Fatal Error:', err.stack || err.message);
+    process.exit(1);
 }
-
-const parsed = await fetchXML(FEED_URL);
-const items = parsed.rss?.channel?.item || [];
-
-for (const item of items) {
-    const tender = {
-        title: item.title?.trim(),
-        description: item.description?.trim(),
-        organization: "Unknown", // fallback until we extract actual org
-        category: "other", // enum default
-        status: "open", // enum default
-        publication_date: new Date(item.pubDate).toISOString().split('T')[0], // format: YYYY-MM-DD
-        deadline: null,
-        region: null,
-        cpv_code: "31500000-1",
-        source_url: item.link,
-        download_status: "pending",
-        review_status: "pending"
-    };
-
-    try {
-        await pushToSupabase(tender);
-    } catch (err) {
-        console.error(`❌ Error inserting ${tender.title}:`, err.message);
-    }
-}
-
-await Actor.exit();
