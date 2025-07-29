@@ -1,9 +1,0 @@
-{
-  "name": "cpv-tender-xml-scraper",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "xml2js": "^0.4.23",
-    "node-fetch": "^3.3.2"
-  }
-}
