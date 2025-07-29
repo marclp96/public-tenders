@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "type": "object",
+  "title": "Tender Scraper Input",
+  "description": "Config for Supabase + XML source",
+  "properties": {
+    "supabaseKey": {
+      "type": "string",
+      "title": "Supabase Service Key",
+      "editor": "textfield",
+      "description": "Paste your Supabase service role key here"
+    },
+    "supabaseUrl": {
+      "type": "string",
+      "title": "Supabase REST API URL",
+      "editor": "textfield",
+      "description": "e.g., https://your-project.supabase.co/rest/v1/tenders"
+    },
+    "feedUrl": {
+      "type": "string",
+      "title": "XML Feed URL",
+      "editor": "textfield",
+      "default": "https://contrataciondelestado.es/sindicacion/sindicacion_31500000_1.xml",
+      "description": "URL of the XML feed (CPV 31500000)"
+    }
+  },
+  "required": ["supabaseKey", "supabaseUrl"]
+}
